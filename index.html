@@ -4,11 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>SafeTrace — Prototype</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-  /* fonts loaded via <link> in head */
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
     --hgtv:#E45C2B;--hgtv2:#C94E20;
@@ -22,10 +19,10 @@
     --white:#fff;--cream:#FAF7F2;
     --success:#1A6B72;--warn:#B8860B;
   }
-  html,body{height:100%;background:var(--bg);font-family:'Source Sans 3',sans-serif;color:var(--ink);overflow:hidden;-webkit-tap-highlight-color:rgba(0,0,0,0.1)}
-  .app{max-width:420px;margin:0 auto;height:100vh;display:flex;flex-direction:column;overflow:hidden;position:relative;background:var(--bg);touch-action:manipulation}
-  .screen{display:none;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden}
-  .screen.active{display:flex}
+  html,body{height:100%;background:var(--bg);font-family:'Source Sans 3',sans-serif;color:var(--ink);overflow:hidden}
+  .app{max-width:420px;margin:0 auto;height:100vh;display:flex;flex-direction:column;overflow:hidden;position:relative;background:var(--bg)}
+  .screen{display:none !important;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden}.screen.active{display:flex !important}
+  .screen.active{display:flex !important}
 
   /* Status bar */
   .statusbar{background:var(--bg);border-bottom:1px solid var(--border);padding:12px 20px 0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
@@ -636,6 +633,7 @@ p, li, td, th, .card-sub, .alert, .btn, label {
 }
 
 </style>
+<!-- static hosting compatible -->
 </head>
 <body>
 <div class="app">
@@ -1131,7 +1129,7 @@ p, li, td, th, .card-sub, .alert, .btn, label {
 </div>
 
 <!-- Nav bar (shared) -->
-<div class="nav-bar" id="main-nav" style="display:none">
+<div class="nav-bar" id="main-nav" style="display:flex">
   <button class="nav-item" onclick="show('screen-home')"><div class="ni-icon">🏠</div><div class="ni-label">Home</div></button>
   <button class="nav-item" onclick="show('screen-vault-list')"><div class="ni-icon">🔒</div><div class="ni-label">Vault</div></button>
   <button class="nav-item" onclick="show('screen-safety-layer')"><div class="ni-icon">🛡️</div><div class="ni-label">Safety</div></button>
@@ -1142,15 +1140,16 @@ p, li, td, th, .card-sub, .alert, .btn, label {
 
 <script>
 function show(id){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  var screens = document.querySelectorAll('.screen');
+  for(var i=0;i<screens.length;i++){
+    screens[i].classList.remove('active');
+    screens[i].style.display='none';
+  }
   var target = document.getElementById(id);
-  if(target) target.classList.add('active');
-  // Show/hide nav
+  if(target){ target.classList.add('active'); target.style.display='flex'; target.scrollTop=0; }
   var noNav=['screen-vault-key','screen-saved'];
   var nav = document.getElementById('main-nav');
-  if(nav) nav.style.display=noNav.includes(id)?'none':'flex';
-  // Scroll to top of new screen
-  if(target) target.scrollTop = 0;
+  if(nav) nav.style.display=(noNav.indexOf(id)>=0)?'none':'flex';
 }
 // Evidence queue state
 let evidenceQueue = [];
@@ -1265,22 +1264,10 @@ function quickExit() {
   window.location.replace('https://weather.com');
 }
 
-// Discreet mode — HGTV camouflage (survivor-validated per PROMiSE/UMiami research)
-let hgtvTapCount = 0;
-let hgtvTimer = null;
 function enableDiscreetMode() {
-  document.getElementById('disguise-overlay').classList.add('visible');
+  var overlay = document.getElementById('disguise-overlay');
+  if(overlay) overlay.classList.add('visible');
   document.body.style.overflow = 'hidden';
-}
-function hgtvTaps() {
-  hgtvTapCount++;
-  clearTimeout(hgtvTimer);
-  hgtvTimer = setTimeout(() => { hgtvTapCount = 0; }, 700);
-  if (hgtvTapCount >= 3) {
-    hgtvTapCount = 0;
-    document.getElementById('disguise-overlay').classList.remove('visible');
-    document.body.style.overflow = '';
-  }
 }
 
 // Hope message
@@ -1290,67 +1277,56 @@ function submitHope() {
   show('screen-home');
 }
 
-// Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', function() {
-  show('screen-home');
+
+// ── INIT (runs immediately since script is at bottom of body) ──
+(function(){
+  // Hide all screens
+  var screens = document.querySelectorAll('.screen');
+  for(var i=0;i<screens.length;i++){
+    screens[i].style.display='none';
+    screens[i].classList.remove('active');
+  }
+  // Show home
+  var home = document.getElementById('screen-home');
+  if(home){ home.style.display='flex'; home.classList.add('active'); }
+  // Show nav
   var nav = document.getElementById('main-nav');
   if(nav) nav.style.display='flex';
-});
 
-// Accessibility controls
-function setTextSize(size) {
-  document.body.classList.remove('text-lg','text-xl');
-  if (size === 'lg') document.body.classList.add('text-lg');
-  if (size === 'xl') document.body.classList.add('text-xl');
-  document.querySelectorAll('.tsz-btn').forEach(b => b.classList.remove('on'));
-  const sel = size === 'lg' ? '#tsz-lg' : size === 'xl' ? '#tsz-xl' : '#tsz-md';
-  document.querySelector(sel).classList.add('on');
-}
-function toggleContrast() {
-  document.body.classList.toggle('hi-contrast');
-  document.getElementById('hc-btn').classList.toggle('on');
-}
-function toggleMotion() {
-  document.body.classList.toggle('reduce-motion');
-  document.getElementById('rm-btn').classList.toggle('on');
-}
+  // a11y functions
+  window.setTextSize = function(size){
+    document.body.classList.remove('text-lg','text-xl');
+    if(size==='lg') document.body.classList.add('text-lg');
+    if(size==='xl') document.body.classList.add('text-xl');
+    var btns = document.querySelectorAll('.tsz-btn');
+    for(var i=0;i<btns.length;i++) btns[i].classList.remove('on');
+    var sel = size==='lg'?'#tsz-lg':size==='xl'?'#tsz-xl':'#tsz-md';
+    var el = document.querySelector(sel);
+    if(el) el.classList.add('on');
+  };
+  window.toggleContrast = function(){
+    document.body.classList.toggle('hi-contrast');
+    var b=document.getElementById('hc-btn'); if(b) b.classList.toggle('on');
+  };
+  window.toggleMotion = function(){
+    document.body.classList.toggle('reduce-motion');
+    var b=document.getElementById('rm-btn'); if(b) b.classList.toggle('on');
+  };
 
-
-// Keyboard accessibility for clickable rows
-document.addEventListener('DOMContentLoaded', function() {
-  // Make clickable rows keyboard accessible
-  document.querySelectorAll('[role="button"]').forEach(el => {
-    el.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        el.click();
-      }
-    });
-  });
-  
-  // Announce screen changes to screen readers
-  const announcer = document.createElement('div');
-  announcer.setAttribute('aria-live', 'assertive');
-  announcer.setAttribute('aria-atomic', 'true');
-  announcer.style.cssText = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;';
-  announcer.id = 'screen-announcer';
-  document.body.appendChild(announcer);
-});
-
-// Announce screen name when navigating
-const _origShow = show;
-function show(id) {
-  _origShow(id);
-  const screen = document.getElementById(id);
-  if (screen) {
-    const heading = screen.querySelector('h1, [class*="section-title"], [class*="slide-title"], [class*="sb-logo"]');
-    const announcer = document.getElementById('screen-announcer');
-    if (announcer && heading) {
-      announcer.textContent = '';
-      setTimeout(() => { announcer.textContent = heading.textContent + ' — screen loaded'; }, 50);
+  // HGTV triple-tap
+  var _taps=0, _timer=null;
+  window.hgtvTaps = function(){
+    _taps++;
+    clearTimeout(_timer);
+    _timer = setTimeout(function(){ _taps=0; }, 700);
+    if(_taps>=3){
+      _taps=0;
+      var o=document.getElementById('disguise-overlay');
+      if(o) o.classList.remove('visible');
+      document.body.style.overflow='';
     }
-  }
-}
+  };
+})();
 
 </script>
 </body>
