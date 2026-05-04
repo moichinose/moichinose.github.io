@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SafeTrace — Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+  /* fonts loaded via <link> in head */
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --hgtv:#E45C2B;--hgtv2:#C94E20;
+    --plum:#6B2D62;--plum2:#8B4580;
+    --teal:#1A6B72;--teal2:#2A9099;
+    --crim:#8B1A2F;--gold:#B8860B;
+    --bg:#FFFFFF;--bg2:#F9F6F3;--bg3:#F2EDE8;
+    --card:#FFFFFF;--card2:#F5F0EB;
+    --border:#E8E2DC;--border2:#D0C8C0;
+    --ink:#1A1410;--dim:#5C504A;--mu:#9B8E86;
+    --white:#fff;--cream:#FAF7F2;
+    --success:#1A6B72;--warn:#B8860B;
+  }
+  html,body{height:100%;background:var(--bg);font-family:'Source Sans 3',sans-serif;color:var(--ink);overflow:hidden;-webkit-tap-highlight-color:rgba(0,0,0,0.1)}
+  .app{max-width:420px;margin:0 auto;height:100vh;display:flex;flex-direction:column;overflow:hidden;position:relative;background:var(--bg);touch-action:manipulation}
+  .screen{display:none;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden}
+  .screen.active{display:flex}
+
+  /* Status bar */
+  .statusbar{background:var(--bg);border-bottom:1px solid var(--border);padding:12px 20px 0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+  .sb-logo{font-size:16px;font-weight:700;letter-spacing:.3px;font-family:'Playfair Display',serif}
+  .sb-logo span{color:var(--hgtv)}
+  .sb-icon{font-size:18px;cursor:pointer;opacity:.7}
+
+  /* Content area */
+  .content{padding:20px;flex:1}
+  .section-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:14px;font-weight:500}
+
+  /* Cards */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:14px}
+  .card-title{font-size:15px;font-weight:600;margin-bottom:6px}
+  .card-sub{font-size:13px;color:var(--mu);line-height:1.6}
+
+  /* Buttons */
+  .btn{width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:transparent;font-size:15px;font-weight:500;color:var(--ink);cursor:pointer;margin-bottom:10px;transition:.15s;font-family:'Source Sans 3',sans-serif;text-align:left;display:flex;align-items:center;gap:12px}
+  .btn:hover{background:var(--bg3)}
+  .btn .btn-icon{font-size:20px;flex-shrink:0}
+  .btn .btn-text{}
+  .btn .btn-label{font-size:13px;color:var(--mu);display:block;font-weight:400;margin-top:2px}
+  .btn-accent{background:var(--hgtv);border-color:var(--hgtv);justify-content:center;text-align:center;color:#fff}
+  .btn-accent:hover{background:var(--hgtv2)}
+  .btn-teal{background:var(--teal);border-color:var(--teal);justify-content:center;color:#fff}
+  .btn-teal:hover{background:var(--teal2)}
+  .btn-sm{padding:10px 16px;font-size:13px;width:auto;border-radius:8px;display:inline-flex;margin-bottom:0}
+  .btn-back{background:none;border:none;color:var(--mu);cursor:pointer;font-size:13px;padding:0 0 16px;font-family:'Source Sans 3',sans-serif}
+
+  /* Alert */
+  .alert{border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.6;margin-bottom:14px;border:1px solid}
+  .alert-info{background:#EEF7F7;border-color:#A8D4D8;color:#1A6B72}
+  .alert-success{background:#E0F2F2;border-color:#7AC4C8;color:#145A60}
+  .alert-warn{background:#FEF8EE;border-color:#DDB870;color:#7A5800}
+  .alert-new{background:#F5EEF3;border-color:#C9A0C0;color:#5A1F52}
+
+  /* Form fields */
+  .field{margin-bottom:16px}
+  .field label{font-size:12px;color:var(--mu);display:block;margin-bottom:7px;letter-spacing:.3px}
+  .field input,.field textarea,.field select{width:100%;background:#FAF8F6;border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--ink);font-family:'Source Sans 3',sans-serif;outline:none;transition:.15s}
+  .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--hgtv);background:#FBF4F0}
+  .field textarea{resize:vertical;min-height:90px}
+  .field select option{background:#FAF8F6}
+  .toggle-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+  .toggle-row:last-child{border-bottom:none}
+  .toggle-label{font-size:14px;color:var(--ink)}
+  .toggle-sub{font-size:12px;color:var(--mu);margin-top:2px}
+  .toggle{width:44px;height:24px;background:rgba(255,255,255,.1);border-radius:12px;cursor:pointer;position:relative;transition:.2s;border:none;flex-shrink:0}
+  .toggle.on{background:var(--hgtv)}
+  .toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s}
+  .toggle.on::after{left:23px}
+
+  /* Vault items */
+  .vault-item{background:#FAFAF8;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;transition:.15s}
+  .vault-item:hover{border-color:var(--border)}
+  .vi-date{font-size:11px;color:var(--mu);margin-bottom:6px}
+  .vi-title{font-size:14px;font-weight:600;font-family:'Playfair Display',serif;color:var(--ink);margin-bottom:4px}
+  .vi-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .vi-tag{font-size:10px;padding:2px 8px;border-radius:4px;background:#EDE8E3;color:var(--mu)}
+  .vi-tag.sealed{background:#EEF7F7;color:var(--teal)}
+  .vi-tag.matched{background:rgba(74,25,66,.2);color:var(--hgtv)}
+  .vi-tag.new-feature{background:#FEF8EE;color:var(--gold)}
+
+  /* Footprint chip */
+  .footprint-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(26,107,114,.1);border:1px solid rgba(26,107,114,.25);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--teal2);margin-bottom:14px}
+  .footprint-chip .fc-dot{width:6px;height:6px;border-radius:50%;background:var(--teal2);flex-shrink:0}
+
+  /* Safety alert */
+  .safety-alert{background:linear-gradient(135deg,#F5EEF3,#EEF7F7);border:1px solid #C9A0C0;border-radius:14px;padding:20px;margin-bottom:14px}
+  .sa-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .sa-icon{font-size:22px}
+  .sa-title{font-size:14px;font-weight:600;color:var(--ink)}
+  .sa-badge{font-size:10px;background:rgba(201,145,61,.2);color:var(--gold);padding:2px 8px;border-radius:4px;letter-spacing:.5px;text-transform:uppercase;font-weight:600}
+  .sa-body{font-size:13px;color:var(--dim);line-height:1.65}
+  .sa-note{font-size:11px;color:var(--mu);margin-top:10px;line-height:1.5;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}
+
+  /* Nav bar */
+  .nav-bar{display:flex;background:rgba(255,255,255,.97);border-top:1px solid var(--border);padding:8px 0 12px;flex-shrink:0;backdrop-filter:blur(12px)}
+  .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;opacity:.45;transition:.2s;border:none;background:none;font-family:'Source Sans 3',sans-serif}
+  .nav-item.active{opacity:1}
+  .nav-item .ni-icon{font-size:20px}
+  .nav-item .ni-label{font-size:10px;color:var(--dim)}
+  .nav-item.active .ni-label{color:var(--hgtv)}
+
+  /* Mono text */
+  .mono{font-family:'DM Mono',monospace;font-size:12px;color:var(--teal);letter-spacing:1px;word-break:break-all}
+
+  /* Divider */
+  .divider{border:none;border-top:1px solid var(--border);margin:16px 0}
+
+/* ── ACCESSIBILITY OVERRIDES ── */
+:root {
+  --fs-base: 16px;
+  --fs-sm: 14px;
+  --fs-xs: 13px;
+  --fs-label: 12px;
+  --touch-min: 56px;
+}
+
+/* Base font size bump */
+body { font-size: var(--fs-base) !important; line-height: 1.65 !important; }
+
+/* Buttons — larger touch targets */
+.btn {
+  min-height: var(--touch-min) !important;
+  padding: 14px 18px !important;
+  font-size: var(--fs-base) !important;
+  line-height: 1.4 !important;
+  border-radius: 12px !important;
+}
+.btn .bl { font-size: var(--fs-sm) !important; }
+.btn-back {
+  min-height: 44px !important;
+  font-size: var(--fs-sm) !important;
+  padding: 8px 0 16px !important;
+}
+
+/* Nav items — bigger touch zones */
+.nav-item { min-height: 56px !important; padding: 6px 0 !important; }
+.nav-item .ni-icon { font-size: 24px !important; }
+.nav-item .ni-label { font-size: 12px !important; }
+
+/* Section labels */
+.section-label { font-size: var(--fs-label) !important; letter-spacing: 2px !important; }
+
+/* Cards */
+.card-title { font-size: var(--fs-base) !important; font-weight: 600 !important; }
+.card-sub { font-size: var(--fs-sm) !important; line-height: 1.7 !important; }
+
+/* Alerts */
+.alert { font-size: var(--fs-sm) !important; line-height: 1.7 !important; padding: 16px !important; }
+
+/* Toggles — larger */
+.toggle { width: 54px !important; height: 30px !important; }
+.toggle::after { width: 22px !important; height: 22px !important; top: 4px !important; left: 4px !important; }
+.toggle.on::after { left: 28px !important; }
+.toggle-label { font-size: var(--fs-base) !important; font-weight: 500 !important; }
+.toggle-sub { font-size: var(--fs-sm) !important; }
+.toggle-row { padding: 14px 0 !important; gap: 12px !important; }
+
+/* Inputs — larger */
+.field label { font-size: var(--fs-sm) !important; margin-bottom: 8px !important; font-weight: 500 !important; }
+.field input, .field textarea, .field select {
+  font-size: var(--fs-base) !important;
+  padding: 14px 16px !important;
+  border-radius: 10px !important;
+  line-height: 1.5 !important;
+  min-height: 52px !important;
+}
+.field { margin-bottom: 18px !important; }
+
+/* Metrics */
+.metric-num { font-size: 34px !important; }
+.metric-label { font-size: 13px !important; line-height: 1.5 !important; }
+.metric-trend { font-size: 12px !important; }
+
+/* Badges */
+.badge { font-size: 12px !important; padding: 5px 11px !important; }
+
+/* Incident rows */
+.ir-title { font-size: var(--fs-base) !important; }
+.ir-meta { font-size: var(--fs-sm) !important; }
+.incident-row { padding: 16px !important; min-height: 72px !important; }
+
+/* Asset rows */
+.asset-name { font-size: var(--fs-base) !important; }
+.asset-meta { font-size: var(--fs-sm) !important; }
+.asset-row { padding: 16px !important; min-height: 72px !important; }
+
+/* Safety cards */
+.sc-title { font-size: var(--fs-base) !important; }
+.sc-body { font-size: var(--fs-sm) !important; line-height: 1.75 !important; }
+.sc-note { font-size: var(--fs-sm) !important; }
+
+/* Footprint chip */
+.footprint-chip { font-size: 13px !important; padding: 10px 14px !important; }
+
+/* Compliance rows */
+.comp-name { font-size: var(--fs-base) !important; }
+.comp-sub { font-size: var(--fs-sm) !important; }
+.comp-row { padding: 14px 0 !important; }
+
+/* Status bar */
+.sb-logo { font-size: 17px !important; }
+.sb-org { font-size: 12px !important; }
+
+/* Capture buttons */
+.capture-btn span:first-child { font-size: 32px !important; }
+.capture-btn span:nth-child(2) { font-size: 14px !important; }
+.capture-btn span:nth-child(3) { font-size: 12px !important; }
+
+/* Focus rings — keyboard navigation */
+*:focus-visible {
+  outline: 3px solid #60A5FA !important;
+  outline-offset: 3px !important;
+  border-radius: 4px !important;
+}
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid #60A5FA !important;
+}
+
+/* Text size modes */
+body.text-lg { font-size: 19px !important; }
+body.text-lg .btn { font-size: 19px !important; min-height: 62px !important; }
+body.text-lg .card-title { font-size: 19px !important; }
+body.text-lg .card-sub, body.text-lg .alert { font-size: 17px !important; }
+body.text-lg .metric-num { font-size: 40px !important; }
+body.text-lg .toggle-label { font-size: 19px !important; }
+body.text-lg .field label { font-size: 17px !important; }
+body.text-lg .field input, body.text-lg .field textarea, body.text-lg .field select { font-size: 19px !important; min-height: 60px !important; }
+body.text-lg .ir-title, body.text-lg .asset-name, body.text-lg .comp-name { font-size: 19px !important; }
+body.text-lg .ir-meta, body.text-lg .asset-meta, body.text-lg .comp-sub { font-size: 16px !important; }
+body.text-lg .toggle-sub, body.text-lg .bl { font-size: 16px !important; }
+
+body.text-xl { font-size: 22px !important; }
+body.text-xl .btn { font-size: 22px !important; min-height: 68px !important; }
+body.text-xl .card-title { font-size: 22px !important; }
+body.text-xl .card-sub, body.text-xl .alert { font-size: 19px !important; }
+body.text-xl .metric-num { font-size: 46px !important; }
+body.text-xl .toggle-label { font-size: 22px !important; }
+body.text-xl .field label { font-size: 19px !important; }
+body.text-xl .field input, body.text-xl .field textarea, body.text-xl .field select { font-size: 22px !important; min-height: 68px !important; }
+body.text-xl .ir-title, body.text-xl .asset-name, body.text-xl .comp-name { font-size: 22px !important; }
+body.text-xl .ir-meta, body.text-xl .asset-meta, body.text-xl .comp-sub { font-size: 18px !important; }
+body.text-xl .toggle-sub, body.text-xl .bl { font-size: 18px !important; }
+body.text-xl .nav-item .ni-icon { font-size: 28px !important; }
+body.text-xl .nav-item .ni-label { font-size: 14px !important; }
+
+/* High contrast mode */
+body.hi-contrast { --border: rgba(255,255,255,.25) !important; --border2: rgba(255,255,255,.4) !important; --mu: #A0AEC0 !important; --dim: rgba(255,255,255,.85) !important; }
+body.hi-contrast .card { background: #1a2a42 !important; border-color: rgba(255,255,255,.3) !important; }
+body.hi-contrast .card-sub, body.hi-contrast .alert { color: rgba(255,255,255,.9) !important; }
+body.hi-contrast .btn { border-color: rgba(255,255,255,.3) !important; }
+body.hi-contrast .badge-mu { color: #D0D8E8 !important; }
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+body.reduce-motion * { transition: none !important; animation: none !important; }
+
+/* Accessibility toolbar */
+.a11y-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  background: rgba(255,255,255,.04);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.a11y-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mu); margin-right: 4px; }
+.a11y-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--dim);
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: .15s;
+  min-height: 32px;
+}
+.a11y-btn:hover, .a11y-btn.on { background: rgba(96,165,250,.15); border-color: rgba(96,165,250,.4); color: var(--sky); }
+.a11y-sep { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+
+/* Quick exit */
+.quick-exit {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 9999;
+  background: var(--crim);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: .3px;
+  box-shadow: 0 2px 12px rgba(139,26,47,.4);
+  transition: .15s;
+  min-height: 34px;
+}
+.quick-exit:hover { background: #a01f38; }
+
+/* Floating discreet mode button — always visible on every screen */
+.float-discreet {
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  z-index: 9998;
+  background: rgba(139,26,47,.18);
+  border: 1px solid rgba(139,26,47,.45);
+  border-radius: 50px;
+  color: #D4526A;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 9px 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  letter-spacing: .3px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 16px rgba(0,0,0,.3);
+  transition: .15s;
+}
+.float-discreet:hover {
+  background: rgba(139,26,47,.3);
+  border-color: rgba(139,26,47,.7);
+}
+
+/* Disguise mode */
+.disguise-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #f5f5f5;
+  z-index: 99999;
+  flex-direction: column;
+  font-family: -apple-system, sans-serif;
+  color: #1a1a1a;
+}
+.disguise-overlay.visible { display: flex; }
+.disguise-bar {
+  background: #2563EB;
+  color: #fff;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.disguise-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+/* weather CSS removed — replaced by HGTV disguise */
+
+
+/* ══════════════════════════════════════════════
+   WCAG 2.2 AA ACCESSIBILITY SYSTEM
+   ══════════════════════════════════════════════ */
+
+/* Skip link */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  background: var(--ink, #0D0D0D);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 0 0 8px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 99999;
+  text-decoration: none;
+  transition: top .15s;
+}
+.skip-link:focus { top: 0; }
+
+/* Minimum touch targets — 48×48px (WCAG 2.5.5) */
+button,
+.btn,
+.nav-item,
+.vault-item,
+.incident-row,
+.asset-row,
+[role="button"] {
+  min-height: 48px !important;
+  min-width: 48px !important;
+}
+
+/* All nav items — bigger tap zone */
+.nav-item {
+  min-height: 56px !important;
+  padding: 8px 4px !important;
+  flex: 1 !important;
+}
+.nav-item .ni-icon { font-size: 22px !important; }
+.nav-item .ni-label { font-size: 11px !important; }
+
+/* Base font size — minimum 16px for body text */
+body {
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+}
+
+/* Minimum readable text sizes */
+.card-sub,
+.alert,
+.btn .bl,
+.toggle-sub,
+.ir-meta,
+.asset-meta,
+.field label,
+.sc-body,
+.sc-note,
+.pv-body,
+.cg-body,
+.col-body,
+.match-note,
+.fn,
+.fb-d {
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+}
+
+.card-title,
+.btn,
+.btn .bt,
+.toggle-label,
+.ir-title,
+.asset-name,
+.comp-name,
+.feat-name,
+.cg-title,
+.col-title {
+  font-size: 16px !important;
+}
+
+/* Section labels — keep small but readable */
+.section-label,
+.eyebrow,
+.slide-label,
+.col-label,
+.sc-label,
+.action-label,
+.section-label {
+  font-size: 11px !important;
+  letter-spacing: 2px !important;
+}
+
+/* Inputs — 16px prevents iOS zoom */
+.field input,
+.field textarea,
+.field select {
+  font-size: 16px !important;
+  min-height: 52px !important;
+  padding: 14px 16px !important;
+  border-radius: 10px !important;
+}
+
+/* Field labels — bold, high contrast */
+.field label {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  margin-bottom: 8px !important;
+  display: block !important;
+}
+
+/* Toggle — 48px minimum */
+.toggle {
+  width: 52px !important;
+  height: 28px !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+}
+.toggle::after {
+  width: 20px !important;
+  height: 20px !important;
+  top: 4px !important;
+  left: 4px !important;
+}
+.toggle.on::after { left: 28px !important; }
+.toggle-row {
+  gap: 16px !important;
+  padding: 14px 0 !important;
+  align-items: flex-start !important;
+}
+.toggle-row > div { flex: 1 !important; }
+
+/* Focus rings — 3px, high contrast (WCAG 2.4.7) */
+*:focus-visible {
+  outline: 3px solid #005FCC !important;
+  outline-offset: 3px !important;
+  border-radius: 4px !important;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 3px solid #005FCC !important;
+  outline-offset: 2px !important;
+}
+
+/* Error states — not color-alone (add icon) */
+.field-error {
+  border-color: #CC0000 !important;
+  background: #FFF5F5 !important;
+}
+.field-error-msg {
+  color: #CC0000;
+  font-size: 13px;
+  margin-top: 4px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.field-error-msg::before { content: "⚠ "; }
+
+/* Better badge contrast */
+.badge {
+  font-size: 12px !important;
+  padding: 5px 11px !important;
+  font-weight: 600 !important;
+}
+
+/* Metric nums — larger */
+.metric-num { font-size: 32px !important; }
+.metric-label { font-size: 13px !important; }
+
+/* Status bar */
+.statusbar {
+  min-height: 56px !important;
+  padding: 12px 16px !important;
+}
+.sb-logo { font-size: 17px !important; }
+
+/* Back button — bigger */
+.btn-back {
+  min-height: 48px !important;
+  font-size: 15px !important;
+  padding: 8px 0 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* Capture buttons — uniform large */
+button[onclick*="simulateCapture"],
+button[onclick*="consumerCapture"],
+button[onclick*="addEvidence"],
+button[onclick*="startRecordWith"] {
+  min-height: 90px !important;
+}
+
+/* Footprint chip */
+.footprint-chip {
+  font-size: 13px !important;
+  padding: 10px 14px !important;
+  margin-bottom: 14px !important;
+}
+
+/* Alert text */
+.alert {
+  font-size: 14px !important;
+  padding: 16px !important;
+  line-height: 1.65 !important;
+}
+
+/* Safety card */
+.safety-card,
+.sc-safety,
+.sc-court {
+  padding: 20px 22px !important;
+}
+.sc-title { font-size: 16px !important; }
+
+/* A11y toolbar improvements */
+.a11y-bar {
+  padding: 10px 16px !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+.a11y-btn {
+  min-height: 40px !important;
+  min-width: 40px !important;
+  padding: 6px 14px !important;
+  font-size: 13px !important;
+}
+.a11y-label { font-size: 11px !important; }
+
+/* Line height — all text */
+p, li, td, th, .card-sub, .alert, .btn, label {
+  line-height: 1.6 !important;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* High contrast media query */
+@media (forced-colors: active) {
+  .btn-primary, .btn-accent, .btn-teal {
+    border: 2px solid ButtonText !important;
+  }
+  .toggle { border: 2px solid ButtonText !important; }
+}
+
+/* Print accessibility */
+@media print {
+  .a11y-bar, .quick-exit, .float-discreet, .nav-bar, .nav { display: none !important; }
+  body { font-size: 12pt !important; color: #000 !important; }
+  a::after { content: " (" attr(href) ")"; font-size: 10pt; color: #555; }
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Quick exit button — always visible -->
+<button class="quick-exit" onclick="quickExit()" aria-label="Quick exit — close app immediately" title="Quick exit">✕ Exit</button>
+
+<!-- Floating discreet mode — always visible on every screen -->
+<button class="float-discreet" onclick="enableDiscreetMode()" aria-label="Enable discreet mode" title="Discreet mode — disguise this app as a weather app">🎭 Discreet</button>
+
+<!-- Disguise overlay — HGTV-style home decor (survivor-validated camouflage per PROMiSE/UMiami research) -->
+<div class="disguise-overlay" id="disguise-overlay" role="dialog" aria-label="Home decor inspiration">
+
+  <!-- Top bar mimicking a real content app -->
+  <div class="disguise-bar" style="background:#fff;color:#1a1a1a;border-bottom:1px solid #e5e5e5;padding:12px 16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;background:#E45C2B;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff">H</div>
+      <span style="font-size:15px;font-weight:700;color:#1a1a1a;letter-spacing:-.3px">Home & Garden</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span style="font-size:20px">🔍</span>
+      <span style="font-size:20px">♡</span>
+    </div>
+  </div>
+
+  <div class="disguise-content" style="background:#f7f7f7;padding:0">
+
+    <!-- Category pills -->
+    <div style="display:flex;gap:8px;padding:12px 14px;overflow-x:auto;background:#fff;border-bottom:1px solid #eee">
+      <div style="background:#E45C2B;color:#fff;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;white-space:nowrap">For You</div>
+      <div style="background:#f0f0f0;color:#555;border-radius:20px;padding:6px 14px;font-size:12px;white-space:nowrap">Living Room</div>
+      <div style="background:#f0f0f0;color:#555;border-radius:20px;padding:6px 14px;font-size:12px;white-space:nowrap">Kitchen</div>
+      <div style="background:#f0f0f0;color:#555;border-radius:20px;padding:6px 14px;font-size:12px;white-space:nowrap">Bedroom</div>
+      <div style="background:#f0f0f0;color:#555;border-radius:20px;padding:6px 14px;font-size:12px;white-space:nowrap">DIY</div>
+      <div style="background:#f0f0f0;color:#555;border-radius:20px;padding:6px 14px;font-size:12px;white-space:nowrap">Garden</div>
+    </div>
+
+    <!-- Featured article -->
+    <div id="hgtv-hero" style="background:#fff;margin-bottom:8px;cursor:pointer" onclick="hgtvTaps()" title="Tap 3 times to return to app">
+      <div style="width:100%;height:170px;background:linear-gradient(135deg,#8B7355,#C4A882);display:flex;align-items:flex-end;padding:14px;position:relative">
+        <div style="position:absolute;top:12px;right:12px;background:#E45C2B;color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:3px;letter-spacing:.5px">TRENDING</div>
+        <div>
+          <div style="font-size:11px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Before & After</div>
+          <div style="font-size:16px;font-weight:700;color:#fff;line-height:1.3">This $800 Living Room Refresh Will Make You Want to Redecorate This Weekend</div>
+        </div>
+      </div>
+      <div style="padding:12px 14px;border-bottom:1px solid #eee">
+        <div style="font-size:12px;color:#E45C2B;font-weight:600;margin-bottom:4px">HOME MAKEOVER</div>
+        <div style="font-size:13px;color:#555;line-height:1.5">Neutral tones, thrifted finds, and a few IKEA hacks transform a dated space into something magazine-worthy.</div>
+        <div style="font-size:11px;color:#aaa;margin-top:6px">4.2K saves · 2 hours ago</div>
+      </div>
+    </div>
+
+    <!-- 2-col grid of articles -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 8px 8px">
+
+      <div style="background:#fff;border-radius:10px;overflow:hidden">
+        <div style="width:100%;height:100px;background:linear-gradient(135deg,#6B8E6B,#9DC09D);display:flex;align-items:center;justify-content:center;font-size:36px">🌿</div>
+        <div style="padding:10px">
+          <div style="font-size:11px;color:#E45C2B;font-weight:600;margin-bottom:3px">GARDEN</div>
+          <div style="font-size:12px;font-weight:600;color:#1a1a1a;line-height:1.35">10 Herb Garden Ideas for Small Spaces</div>
+          <div style="font-size:10px;color:#aaa;margin-top:4px">3.1K saves</div>
+        </div>
+      </div>
+
+      <div style="background:#fff;border-radius:10px;overflow:hidden">
+        <div style="width:100%;height:100px;background:linear-gradient(135deg,#C4A882,#E8D5B7);display:flex;align-items:center;justify-content:center;font-size:36px">🕯️</div>
+        <div style="padding:10px">
+          <div style="font-size:11px;color:#E45C2B;font-weight:600;margin-bottom:3px">DECOR</div>
+          <div style="font-size:12px;font-weight:600;color:#1a1a1a;line-height:1.35">Cozy Fall Staging Ideas Designers Love</div>
+          <div style="font-size:10px;color:#aaa;margin-top:4px">7.8K saves</div>
+        </div>
+      </div>
+
+      <div style="background:#fff;border-radius:10px;overflow:hidden">
+        <div style="width:100%;height:100px;background:linear-gradient(135deg,#7A9EC4,#B0C8E0);display:flex;align-items:center;justify-content:center;font-size:36px">🛁</div>
+        <div style="padding:10px">
+          <div style="font-size:11px;color:#E45C2B;font-weight:600;margin-bottom:3px">BATHROOM</div>
+          <div style="font-size:12px;font-weight:600;color:#1a1a1a;line-height:1.35">Budget Bathroom Remodel Under $500</div>
+          <div style="font-size:10px;color:#aaa;margin-top:4px">2.4K saves</div>
+        </div>
+      </div>
+
+      <div style="background:#fff;border-radius:10px;overflow:hidden">
+        <div style="width:100%;height:100px;background:linear-gradient(135deg,#D4956A,#E8C09A);display:flex;align-items:center;justify-content:center;font-size:36px">🍳</div>
+        <div style="padding:10px">
+          <div style="font-size:11px;color:#E45C2B;font-weight:600;margin-bottom:3px">KITCHEN</div>
+          <div style="font-size:12px;font-weight:600;color:#1a1a1a;line-height:1.35">Cabinet Paint Colors That Are Having a Moment</div>
+          <div style="font-size:10px;color:#aaa;margin-top:4px">5.6K saves</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Subtle return instruction -->
+    <div style="font-size:10px;color:#ccc;text-align:center;padding:12px 0 40px">Tap the featured article 3 times to return</div>
+  </div>
+
+  <!-- Fake bottom nav -->
+  <div style="display:flex;background:#fff;border-top:1px solid #eee;padding:8px 0 14px;flex-shrink:0">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:20px"><span aria-hidden="true">🏠</span></span><span style="font-size:10px;color:#E45C2B;font-weight:600">Home</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:20px">🔍</span><span style="font-size:10px;color:#aaa">Explore</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:20px">♡</span><span style="font-size:10px;color:#aaa">Saved</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:20px">👤</span><span style="font-size:10px;color:#aaa">Profile</span></div>
+  </div>
+
+</div>
+
+
+<!-- ── HOME ── -->
+<div id="screen-home" class="screen active">
+  <div class="statusbar"><div class="sb-logo">Safe<span>Trace</span></div>
+
+<!-- Accessibility toolbar -->
+<div class="a11y-bar" role="toolbar" aria-label="Accessibility options">
+  <span class="a11y-label">Accessibility</span>
+  <button class="a11y-btn tsz-btn on" id="tsz-md" onclick="setTextSize('md')" aria-label="Normal text size" title="Normal text">A</button>
+  <button class="a11y-btn tsz-btn" id="tsz-lg" onclick="setTextSize('lg')" aria-label="Large text size" title="Large text" style="font-size:15px">A+</button>
+  <button class="a11y-btn tsz-btn" id="tsz-xl" onclick="setTextSize('xl')" aria-label="Extra large text size" title="Extra large text" style="font-size:17px">A++</button>
+  <div class="a11y-sep"></div>
+  <button class="a11y-btn" id="hc-btn" onclick="toggleContrast()" aria-label="Toggle high contrast" title="High contrast">◑ Contrast</button>
+  <button class="a11y-btn" id="rm-btn" onclick="toggleMotion()" aria-label="Reduce motion" title="Reduce motion">⏸ Motion</button>
+</div>
+<div class="sb-icon" onclick="show('screen-resources')">🌐</div></div>
+  <div class="content" style="padding:16px 20px">
+
+    <!-- CAPTURE STRIP — above the fold, first thing seen -->
+    <div style="background:linear-gradient(135deg,#FBF0EB,#FEF8F4);border:2px solid #E4A088;border-radius:18px;padding:20px 18px;margin-bottom:16px">
+      <div style="font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--hgtv);margin-bottom:6px;font-weight:700">Start a new record</div>
+      <div style="font-size:13px;color:var(--dim);margin-bottom:14px;line-height:1.5">Add photos, videos, files, voice memos and your written account — all in one place, sealed with <strong style="color:var(--ink)">one key</strong>.</div>
+      <button class="btn btn-accent" style="margin-bottom:10px;border-radius:12px;justify-content:center;font-size:16px;min-height:56px" onclick="show('screen-vault-create')">
+        📋 &nbsp;Start new record
+      </button>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+        <button onclick="startRecordWith('📷','Photo')" aria-label="Start a record by adding a photo" style="background:#EDE8E3;border:1px solid var(--border);border-radius:11px;padding:12px 6px;cursor:pointer;color:var(--ink);font-family:'Source Sans 3',sans-serif;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:72px;transition:.15s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
+          <span style="font-size:22px"><span aria-hidden="true">📷</span></span><span style="font-size:11px;font-weight:500">Photo</span>
+        </button>
+        <button onclick="startRecordWith('🎥','Video')" aria-label="Start a record by adding a video" style="background:#EDE8E3;border:1px solid var(--border);border-radius:11px;padding:12px 6px;cursor:pointer;color:var(--ink);font-family:'Source Sans 3',sans-serif;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:72px;transition:.15s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
+          <span style="font-size:22px"><span aria-hidden="true">🎥</span></span><span style="font-size:11px;font-weight:500">Video</span>
+        </button>
+        <button onclick="startRecordWith('🎙️','Voice memo')" aria-label="Start a record by adding a voice memo" style="background:#EDE8E3;border:1px solid var(--border);border-radius:11px;padding:12px 6px;cursor:pointer;color:var(--ink);font-family:'Source Sans 3',sans-serif;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:72px;transition:.15s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
+          <span style="font-size:22px"><span aria-hidden="true">🎙️</span></span><span style="font-size:11px;font-weight:500">Voice</span>
+        </button>
+        <button onclick="startRecordWith('📎','File')" aria-label="Start a record by uploading a file" style="background:#EDE8E3;border:1px solid var(--border);border-radius:11px;padding:12px 6px;cursor:pointer;color:var(--ink);font-family:'Source Sans 3',sans-serif;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:72px;transition:.15s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
+          <span style="font-size:22px"><span aria-hidden="true">📎</span></span><span style="font-size:11px;font-weight:500">File</span>
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--mu);text-align:center;margin-top:10px">All evidence goes into one record — sealed with one key</div>
+    </div>
+<!-- secondary actions -->
+    <div class="btn" onclick="show('screen-vault-list')"><div class="btn-icon">🔒</div><div class="btn-text">My vault<div class="btn-label">View your sealed records</div></div></div>
+    <div class="btn" onclick="show('screen-matching')"><div class="btn-icon">🔗</div><div class="btn-text">Perpetrator matching<div class="btn-label">Anonymous — opt-in only</div></div></div>
+    <div class="btn" style="border-color:rgba(107,45,98,.35);background:rgba(74,25,66,.06)" onclick="show('screen-safety-layer')">
+      <div class="btn-icon">🛡️</div>
+      <div class="btn-text">Safety alerts<div class="btn-label">Aggregate patterns in your area — no identities shared</div></div>
+      <div style="margin-left:auto;font-size:10px;background:rgba(201,145,61,.2);color:var(--gold);padding:2px 7px;border-radius:4px;font-weight:600;letter-spacing:.5px;flex-shrink:0">NEW</div>
+    </div>
+    <div class="btn" onclick="show('screen-resources')"><div class="btn-icon">🌐</div><div class="btn-text">Crisis resources<div class="btn-label">SANE programs, hotlines, legal aid near you</div></div></div>
+  </div>
+  <div class="nav-bar" role="navigation" aria-label="Main navigation">
+    <button class="nav-item active"><div class="ni-icon">🏠</div><div class="ni-label">Home</div></button>
+    <button class="nav-item" onclick="show('screen-vault-list')"><div class="ni-icon">🔒</div><div class="ni-label">Vault</div></button>
+    <button class="nav-item" onclick="show('screen-safety-layer')"><div class="ni-icon">🛡️</div><div class="ni-label">Safety</div></button>
+    <button class="nav-item" onclick="show('screen-resources')"><div class="ni-icon">🌐</div><div class="ni-label">Resources</div></button>
+  </div>
+</div>
+
+
+<!-- ── NEW RECORD: EVIDENCE BUILDER ── -->
+<div id="screen-vault-create" class="screen">
+  <div class="statusbar"><button class="btn-back" onclick="show('screen-home')">← Back</button></div>
+  <div class="scrollable" role="main" id="main-content">
+
+    <div class="section-title">New Record</div>
+    <div class="alert alert-info">Everything you add here — photos, videos, files, voice memos, and your written description — is sealed together under <strong>one single key</strong> at the end. You will only ever have one key to remember for this incident.</div>
+
+    <!-- EVIDENCE QUEUE -->
+    <div style="background:#FAFAF8;border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:var(--ink)">Evidence for this record</div>
+        <div id="evidence-count" role="status" aria-live="polite" style="font-size:11px;color:var(--mu);background:#EDE8E3;padding:3px 10px;border-radius:10px">0 items</div>
+      </div>
+
+      <!-- Add buttons -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px">
+        <button onclick="addEvidence('📷','Photo')" aria-label="Add a photo" style="background:var(--card2);border:1px solid var(--border2);border-radius:11px;padding:14px 8px;cursor:pointer;color:var(--ink);font-family:'Source Sans 3',sans-serif;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.15s;min-height:80px" onmouseover="this.style.borderColor='rgba(107,45,98,.6)'" onmouseout="this.style.borderColor='var(--border2)'">
+          <span style="font-size:28px"><span aria-hidden="true">📷</span></span>
+          <span style="font-size:13px;font-weight:500">Add photo</span>
+          <span style="font-size:11px;color:var(--mu)">Camera or camera roll</span>
+        </button>
+        <button onclick="addEvidence('🎥','Video')" aria-label="Add a video" style="background:var(--card2);border:1px solid var(--border2);border-radius:11px;padding:14px 8px;cursor:pointer;color:var(--ink);font-family:'Source Sans 3',sans-serif;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.15s;min-height:80px" onmouseover="this.style.borderColor='rgba(107,45,98,.6)'" onmouseout="this.style.borderColor='var(--border2)'">
+          <span style="font-size:28px"><span aria-hidden="true">🎥</span></span>
+          <span style="font-size:13px;font-weight:500">Add video</span>
+          <span style="font-size:11px;color:var(--mu)">Record or upload clip</span>
+        </button>
+        <button onclick="addEvidence('🎵','Voice memo')" aria-label="Add a voice memo" style="background:var(--card2);border:1px solid var(--border2);border-radius:11px;padding:14px 8px;cursor:pointer;color:var(--ink);font-family:'Source Sans 3',sans-serif;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.15s;min-height:80px" onmouseover="this.style.borderColor='rgba(107,45,98,.6)'" onmouseout="this.style.borderColor='var(--border2)'">
+          <span style="font-size:28px"><span aria-hidden="true">🎙️</span></span>
+          <span style="font-size:13px;font-weight:500">Voice memo</span>
+          <span style="font-size:11px;color:var(--mu)">Record or upload audio</span>
+        </button>
+        <button onclick="addEvidence('📎','File')" aria-label="Upload a file" style="background:var(--card2);border:1px solid var(--border2);border-radius:11px;padding:14px 8px;cursor:pointer;color:var(--ink);font-family:'Source Sans 3',sans-serif;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.15s;min-height:80px" onmouseover="this.style.borderColor='rgba(107,45,98,.6)'" onmouseout="this.style.borderColor='var(--border2)'">
+          <span style="font-size:28px"><span aria-hidden="true">📎</span></span>
+          <span style="font-size:13px;font-weight:500">Upload file</span>
+          <span style="font-size:11px;color:var(--mu)">Docs, screenshots, PDFs</span>
+        </button>
+      </div>
+
+      <!-- Evidence queue list -->
+      <div id="evidence-queue" style="display:none">
+        <div style="font-size:11px;color:var(--mu);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Added to this record</div>
+        <div id="evidence-items" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <div id="queue-empty" style="text-align:center;padding:8px 0 4px">
+        <div style="font-size:12px;color:var(--mu)">No evidence added yet — add as much as you need above. Everything goes into one sealed record.</div>
+      </div>
+    </div>
+
+    <!-- WRITTEN DESCRIPTION -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:12px">📝 Your account</div>
+      <div class="field"><label>What happened</label><textarea id="incident-desc" placeholder="Describe what occurred in your own words. You can be as detailed or as brief as you need. This is encrypted — only you can read it." style="min-height:100px"></textarea></div>
+      <div class="field"><label>Date of incident</label><input type="date" id="incident-date"></div>
+      <div class="field"><label>Location (optional)</label><input type="text" placeholder="Address, landmark, or general area"></div>
+    </div>
+
+    <!-- WITNESS INFO -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:4px">👤 Witnesses (optional)</div>
+      <div class="card-sub" style="margin-bottom:14px">Add as many witnesses as you need. All contact details are stored encrypted.</div>
+
+      <div id="witness-list"></div>
+
+      <button onclick="addWitness()" style="background:rgba(26,107,114,.08);border:1px solid rgba(26,107,114,.25);border-radius:10px;padding:12px 16px;width:100%;cursor:pointer;color:var(--teal2);font-family:'Source Sans 3',sans-serif;font-size:14px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;transition:.15s" onmouseover="this.style.background='rgba(26,107,114,.15)'" onmouseout="this.style.background='rgba(26,107,114,.08)'" aria-label="Add a witness">
+        + &nbsp;Add a witness
+      </button>
+    </div>
+
+    <!-- PERPETRATOR -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:6px">🔗 Perpetrator details (for matching)</div>
+      <div class="card-sub" style="margin-bottom:12px">This is converted to a one-way hash on your device. The original text is never stored or transmitted.</div>
+      <div class="field"><label>Name, phone, email, or social handle</label><input type="text" placeholder="Any identifying detail you know"></div>
+    </div>
+
+    <!-- PRIVACY OPTIONS -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:4px">🔒 Privacy options</div>
+      <div style="padding:0">
+        <div class="toggle-row">
+          <div><div class="toggle-label">Seal GPS coordinates</div><div class="toggle-sub">Pins exact location to this record</div></div>
+          <button class="toggle on" onclick="this.classList.toggle('on')" aria-label="Toggle GPS sealing"></button>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Opt in to perpetrator matching</div><div class="toggle-sub">Anonymous — 2+ threshold · attorneys notified only</div></div>
+          <button class="toggle on" onclick="this.classList.toggle('on')" aria-label="Toggle perpetrator matching"></button>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Contribute to community safety</div><div class="toggle-sub">Share behavioral tags for aggregate pattern alerts</div></div>
+          <button class="toggle" onclick="this.classList.toggle('on')" aria-label="Toggle community safety contribution"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-warn" style="margin-bottom:14px">
+      🔑 <strong>One key seals everything above.</strong> Your photos, videos, files, voice memos, and written account are all encrypted together. You will create one recovery phrase at the next step — that is the only key you need for this entire record.
+    </div>
+
+    <button class="btn btn-accent" onclick="goToKeyScreen()" style="justify-content:center;min-height:58px;font-size:16px">
+      Generate one key & seal this record →
+    </button>
+  </div>
+</div>
+
+<!-- ── KEY GENERATION ── -->
+<div id="screen-vault-key" class="screen">
+  <div class="statusbar"><button class="btn-back" onclick="show('screen-vault-create')">← Back</button></div>
+  <div class="scrollable" role="main">
+    <div class="section-title">One Key for This Record</div>
+
+    <div class="alert alert-success" style="margin-bottom:14px">
+      ✓ <strong>One key seals everything in this record</strong> — all your photos, videos, voice memos, files, and written account together. You only need to remember one recovery phrase for this entire record.
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">🔑 How this works</div>
+      <div class="card-sub" style="line-height:1.75">
+        <strong style="color:var(--teal2)">One record = one key.</strong> All your evidence is encrypted together as a single package.<br><br>
+        <strong style="color:var(--teal2)">If you have 3 incidents, you will have 3 keys</strong> — one per incident, not one per file or photo.<br><br>
+        <strong style="color:var(--teal2)">Write down your recovery phrase.</strong> SafeTrace cannot recover it. Keep it somewhere only you can find — a notebook, a trusted person, or a password manager.
+      </div>
+    </div>
+
+    <div id="evidence-summary" style="background:#EEF7F7;border:1px solid #A8D4D8;border-radius:12px;padding:16px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--teal2);margin-bottom:8px;letter-spacing:.3px">THIS KEY WILL SEAL:</div>
+      <div id="key-evidence-list" style="font-size:13px;color:var(--dim);line-height:1.9"></div>
+    </div>
+
+    <div class="field"><label>Create a PIN for this record (4–8 digits)</label><input type="number" placeholder="Choose a PIN you will remember" maxlength="8" autocomplete="off" inputmode="numeric" autocomplete="off" inputmode="numeric" id="vault-pin" aria-label="Create vault PIN"></div>
+
+    <div id="recovery-box" style="display:none">
+      <div class="card" style="border-color:rgba(74,25,66,.5);background:#FBF4F0;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:10px">🔑 Your recovery phrase — write this down now</div>
+        <div class="mono" id="recovery-code" style="font-size:15px;letter-spacing:2px;line-height:2.2"></div>
+        <div style="font-size:13px;color:var(--mu);margin-top:12px;line-height:1.65">This phrase unlocks everything in this record. SafeTrace cannot recover it for you. Write it down, screenshot it, or store it in a password manager.</div>
+      </div>
+      <button class="btn btn-accent" onclick="finalSave()" style="justify-content:center;font-size:16px;min-height:58px">I have saved my phrase — seal this record</button>
+    </div>
+
+    <button class="btn btn-teal" id="gen-key-btn" onclick="generateKey()" style="justify-content:center;font-size:16px;min-height:58px">Generate my recovery phrase</button>
+  </div>
+</div>
+
+<!-- ── SAVED ── -->
+<div id="screen-saved" class="screen">
+  <div class="content" style="justify-content:center;align-items:center;display:flex;flex-direction:column;height:100%">
+    <div style="width:64px;height:64px;border-radius:50%;background:#F5EEF3;border:2px solid #C9A0C0;display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:28px">🔒</div>
+    <div style="font-size:20px;font-weight:600;margin-bottom:8px;text-align:center">Your record is sealed.</div>
+    <div style="font-size:14px;color:var(--mu);line-height:1.6;max-width:300px;text-align:center;margin-bottom:24px">All your evidence is encrypted together under one key. Nothing leaves your vault until you choose to release it.</div>
+    <div class="footprint-chip"><div class="fc-dot"></div>Footprint sealed · RFC 3161 · <span id="saved-timestamp" class="mono" style="font-size:11px"></span></div>
+    <div class="alert alert-success" style="width:100%;text-align:center">Your record is now legally verifiable as created today.</div>
+    <button class="btn btn-accent" onclick="show('screen-hope')" style="justify-content:center">Continue</button>
+    <button class="btn" onclick="show('screen-release')" style="justify-content:center">Release this record to someone</button>
+  </div>
+</div>
+
+<!-- ── MESSAGE OF HOPE (optional, post-seal) ── -->
+<div id="screen-hope" class="screen">
+  <div class="statusbar"><button class="btn-back" onclick="show('screen-home')">← Home</button></div>
+  <div class="scrollable" role="main" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:32px 24px 80px;background:var(--bg2)">
+    <div style="font-size:40px;margin-bottom:16px">🕊️</div>
+    <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--ink);margin-bottom:10px">You are not alone.</div>
+    <div style="font-size:14px;color:var(--dim);line-height:1.7;max-width:320px;margin-bottom:28px">Survivors often find strength in knowing others have walked this path. Would you like to leave an anonymous message of hope for another survivor who may use SafeTrace one day?</div>
+
+    <div class="alert alert-info" style="width:100%;text-align:left;margin-bottom:20px">
+      Your message is completely anonymous. It cannot be linked to you, your record, or any identifying information. You can skip this at any time.
+    </div>
+
+    <div class="field" style="width:100%;text-align:left;margin-bottom:16px">
+      <label>Your message (optional)</label>
+      <textarea id="hope-message" placeholder="You are believed. What happened was not your fault. You did the right thing by documenting it..." style="min-height:120px"></textarea>
+    </div>
+
+    <button class="btn btn-accent" onclick="submitHope()" style="justify-content:center;font-size:15px;min-height:54px;width:100%;margin-bottom:10px">Share this message anonymously</button>
+    <button class="btn" onclick="show('screen-home')" style="justify-content:center;width:100%;color:var(--mu)">Skip — go to home</button>
+  </div>
+</div>
+
+<!-- ── VAULT LIST ── -->
+<div id="screen-vault-list" class="screen">
+  <div class="statusbar"><button class="btn-back" onclick="show('screen-home')">← Home</button></div>
+  <div class="content">
+    <div class="section-title">My vault</div>
+    <div class="vault-item" role="button" tabindex="0" onclick="show('screen-vault-detail')">
+      <div class="vi-date">April 16, 2026 · 11:43 AM · Charleston, SC</div>
+      <div class="vi-title">Record #1 — sealed</div>
+      <div class="vi-tags"><span class="vi-tag sealed">🔒 1 key · 4 items</span><span class="vi-tag sealed">📍 GPS sealed</span><span class="vi-tag matched">🔗 Matching on</span><span class="vi-tag new-feature">🛡️ Safety layer on</span></div>
+    </div>
+    <div class="vault-item" role="button" tabindex="0">
+      <div class="vi-date">April 19, 2026 · 3:22 PM · Moncks Corner, SC</div>
+      <div class="vi-title">Record #2 — sealed</div>
+      <div class="vi-tags"><span class="vi-tag sealed">🔒 1 key · 2 items</span><span class="vi-tag sealed">⏱️ RFC 3161</span><span class="vi-tag new-feature">🛡️ Safety layer on</span></div>
+    </div>
+    <hr class="divider">
+    <button class="btn btn-accent" onclick="show('screen-vault-create')">+ Create new record</button>
+  </div>
+</div>
+
+<!-- ── VAULT DETAIL ── -->
+<div id="screen-vault-detail" class="screen">
+  <div class="statusbar"><button class="btn-back" onclick="show('screen-vault-list')">← Vault</button></div>
+  <div class="content">
+    <div class="section-title">Record #1</div>
+    <div class="footprint-chip"><div class="fc-dot"></div>Footprint · 2026-04-16T11:43:22Z · SHA-256: a3f8...c12d</div>
+    <div class="card"><div class="card-title">🔒 Contents encrypted</div><div class="card-sub">This record can only be decrypted with your vault PIN and recovery code. SafeTrace does not have access to the contents.</div></div>
+    <div class="card" style="border-color:rgba(26,107,114,.25)"><div class="card-title">📋 Record metadata (not encrypted)</div><div class="card-sub">Created: April 16, 2026 · 11:43 AM<br>GPS sealed: yes · Matching: enabled<br>Community safety: enabled · Witnesses: 1 recorded</div></div>
+    <button class="btn btn-accent" onclick="show('screen-release')">Release this record</button>
+    <button class="btn">Download encrypted backup</button>
+  </div>
+</div>
+
+<!-- ── MATCHING ── -->
+<div id="screen-matching" class="screen">
+  <div class="statusbar"><button class="btn-back" onclick="show('screen-home')">← Home</button></div>
+  <div class="content">
+    <div class="section-title">Anonymous Perpetrator Matching</div>
+    <div class="alert alert-warn">⚖️ <strong>Court-grade design.</strong> This system is modelled on the Callisto standard — the only survivor matching architecture with a documented legal track record.</div>
+
+    <div class="card" style="border-color:#A8D4D8">
+      <div class="card-title">🔗 How matching works — step by step</div>
+      <div class="card-sub" style="line-height:1.75">
+        <strong style="color:var(--teal2)">1. Your input never leaves your device as plaintext.</strong><br>
+        Perpetrator identifiers (name, phone, email, social handle) are converted to a one-way cryptographic hash on your device before upload. The original text is never transmitted or stored.<br><br>
+        <strong style="color:var(--teal2)">2. A match only triggers at 2 or more independent reports.</strong><br>
+        A single submission — including any attempt to probe the system — returns nothing. Only when two or more survivors have independently submitted the same identifier does a match occur.<br><br>
+        <strong style="color:var(--teal2)">3. Notification goes to attorneys only — never directly to you or the other survivor.</strong><br>
+        When a match is confirmed, two separate pro bono attorneys are each notified — one per survivor. Each attorney receives only the contact details of their own survivor. Neither attorney is told the perpetrator's name. Neither survivor's identity is revealed to the other.<br><br>
+        <strong style="color:var(--teal2)">4. You choose what happens next.</strong><br>
+        Your attorney contacts you privately to explain your options. You decide whether to proceed, connect with the other survivor (with their consent), or take no action. The perpetrator is never notified at any stage.
+      </div>
+    </div>
+
+    <div class="card" style="border-color:#D4A0A8;background:#FEF5F5">
+      <div class="card-title">⚠️ Why advocates cannot hold your evidence</div>
+      <div class="card-sub">Non-attorney advocates who receive or store survivor evidence can be compelled to testify in court — which can expose your identity and undermine your case. SafeTrace routes all match notifications through attorneys, who are protected by attorney-client privilege.</div>
+    </div>
+
+    <div class="alert alert-success">Your records are opted in to matching. If a match is confirmed at the 2+ threshold, a pro bono attorney will contact you privately.</div>
+    <button class="btn">Update matching preferences</button>
+    <button class="btn" onclick="show('screen-home')">Back to home</button>
+  </div>
+</div>
+
+<!-- ── COMMUNITY SAFETY LAYER ── -->
+<div id="screen-safety-layer" class="screen">
+  <div class="statusbar"><button class="btn-back" onclick="show('screen-home')">← Home</button></div>
+  <div class="content">
+    <div class="section-title">Community Safety Layer</div>
+    <div class="alert alert-new">🆕 <strong>New feature.</strong> This optional layer helps you benefit from collective safety intelligence — without exposing your identity, contact info, or any personal details.</div>
+
+    <div class="safety-alert">
+      <div class="sa-header">
+        <div class="sa-icon">⚠️</div>
+        <div>
+          <div class="sa-title">Safety pattern detected in your area</div>
+          <div class="sa-badge">Aggregate alert</div>
+        </div>
+      </div>
+      <div class="sa-body"><strong style="color:var(--ink);font-weight:500">&ldquo;A similar pattern has been reported in your selected context.&rdquo;</strong><br><br>Multiple users independently submitted similar structured reports. A repeated pattern of concerning behavior has been observed across unrelated submissions in the Charleston, SC area.</div>
+      <div class="sa-note">No personal identities, social media handles, or direct identifiers are shared between users. This signal is generated from behavioral descriptions and non-identifying contextual metadata only. You cannot identify — and cannot be identified by — any other reporter.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🛡️ How your data is protected</div>
+      <div class="card-sub" style="line-height:1.7">
+        • You log behavioral descriptions, non-identifying tags, and contextual metadata — not your identity<br>
+        • Pattern detection runs across unrelated, independent submissions only<br>
+        • No personal identities, social media handles, or direct identifiers are shared between users<br>
+        • You are only notified that a similar pattern exists — no individual is identified or linked<br>
+        • You can opt out at any time from Settings
+      </div>
+    </div>
+
+    <div style="background:#FAFAF8;border:1px solid var(--border);border-radius:12px;padding:4px 16px;margin-bottom:16px">
+      <div class="toggle-row">
+        <div><div class="toggle-label">Participate in community safety</div><div class="toggle-sub">Contribute anonymized data to aggregate alerts</div></div>
+        <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Receive safety alerts</div><div class="toggle-sub">Get notified of patterns in your area</div></div>
+        <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+      </div>
+    </div>
+    <button class="btn btn-teal" onclick="show('screen-resources')">View crisis resources</button>
+    <button class="btn" onclick="show('screen-home')">Back to home</button>
+  </div>
+</div>
+
+<!-- ── RELEASE ── -->
+<div id="screen-release" class="screen">
+  <div class="statusbar"><button class="btn-back" onclick="show('screen-home')">← Home</button></div>
+  <div class="content">
+    <div class="section-title">Release a record</div>
+    <div class="alert alert-warn">Only you can authorize a release. SafeTrace cannot produce vault contents in response to any third-party request — including law enforcement subpoenas.</div>
+
+    <div class="card" style="border-color:#D4B870;background:#FEF8EE;margin-bottom:14px">
+      <div class="card-title">⚖️ Which pathway is strongest in court?</div>
+      <div class="card-sub" style="line-height:1.75">
+        <strong style="color:var(--gold)">Attorney release is the most legally protected.</strong> Your attorney receives your record under attorney-client privilege — it cannot be used against you and is shielded from opposing counsel without your consent.<br><br>
+        <strong style="color:var(--gold)">Advocate release carries a risk.</strong> Non-attorney advocates who hold your evidence can be subpoenaed to testify, which may expose your identity and the contents of your record. Only release to an advocate if they are supervised by an attorney or your jurisdiction provides statutory advocate privilege.<br><br>
+        <strong style="color:var(--gold)">Law enforcement release initiates an investigation.</strong> Once released, you lose control of how the record is used. Consult an attorney first.
+      </div>
+    </div>
+
+    <div class="btn" onclick="show('screen-home')"><div class="btn-icon">⚖️</div><div class="btn-text">Attorney <span style="font-size:10px;background:rgba(26,107,114,.2);color:var(--teal2);padding:2px 7px;border-radius:4px;margin-left:6px;font-weight:600">STRONGEST</span><div class="btn-label">Protected by attorney-client privilege · Recommended first step</div></div></div>
+    <div class="btn" onclick="show('screen-home')"><div class="btn-icon">🛡️</div><div class="btn-text">Law enforcement<div class="btn-label">Initiates investigation — consult attorney first</div></div></div>
+    <div class="btn" onclick="show('screen-home')"><div class="btn-icon">🤝</div><div class="btn-text">Advocate <span style="font-size:10px;background:rgba(139,26,47,.15);color:#D4526A;padding:2px 7px;border-radius:4px;margin-left:6px;font-weight:600">REVIEW RISK</span><div class="btn-label">Advocates may be subpoenaed — confirm privilege protection first</div></div></div>
+  </div>
+</div>
+
+<!-- ── RESOURCES ── -->
+<div id="screen-resources" class="screen">
+  <div class="statusbar"><button class="btn-back" onclick="show('screen-home')">← Home</button></div>
+  <div class="content">
+    <div class="section-title">Crisis resources · South Carolina</div>
+    <div class="alert alert-info">Accessing this page does not create a record in your vault.</div>
+    <div class="card"><div class="card-title">🏥 SANE program</div><div class="card-sub">MUSC Sexual Assault Nurse Examiner · 843-792-3300 · 24/7 forensic exam available</div></div>
+    <div class="card"><div class="card-title">📞 RAINN Hotline</div><div class="card-sub">1-800-656-HOPE (4673) · 24/7 · Confidential · Available in 200+ languages</div></div>
+    <div class="card"><div class="card-title">🏠 DV Shelter</div><div class="card-sub">HOPE Sheds Light · Berkeley County · 843-761-8821 · Emergency shelter available</div></div>
+    <div class="card"><div class="card-title">⚖️ Legal aid</div><div class="card-sub">SC Legal Services · 1-888-346-5592 · Free civil legal assistance for survivors</div></div>
+    <div class="card"><div class="card-title">🆘 Crisis text line</div><div class="card-sub">Text HOME to 741741 · Free, 24/7, confidential</div></div>
+  </div>
+</div>
+
+<!-- Nav bar (shared) -->
+<div class="nav-bar" id="main-nav" style="display:none">
+  <button class="nav-item" onclick="show('screen-home')"><div class="ni-icon">🏠</div><div class="ni-label">Home</div></button>
+  <button class="nav-item" onclick="show('screen-vault-list')"><div class="ni-icon">🔒</div><div class="ni-label">Vault</div></button>
+  <button class="nav-item" onclick="show('screen-safety-layer')"><div class="ni-icon">🛡️</div><div class="ni-label">Safety</div></button>
+  <button class="nav-item" onclick="show('screen-resources')"><div class="ni-icon">🌐</div><div class="ni-label">Resources</div></button>
+</div>
+
+</div><!-- /app -->
+
+<script>
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  var target = document.getElementById(id);
+  if(target) target.classList.add('active');
+  // Show/hide nav
+  var noNav=['screen-vault-key','screen-saved'];
+  var nav = document.getElementById('main-nav');
+  if(nav) nav.style.display=noNav.includes(id)?'none':'flex';
+  // Scroll to top of new screen
+  if(target) target.scrollTop = 0;
+}
+// Evidence queue state
+let evidenceQueue = [];
+const fileNames = {
+  '📷': ['photo_001.jpg','photo_002.jpg','screenshot.png','image.heic'],
+  '🎥': ['video_clip.mp4','recording.mov','evidence.mp4'],
+  '🎙️': ['voice_memo.m4a','recording.aac','audio_note.mp3'],
+  '📎': ['document.pdf','screenshot_messages.png','medical_report.pdf','letter.pdf']
+};
+
+function addEvidence(icon, label) {
+  const names = fileNames[icon] || ['file.dat'];
+  const name = names[Math.floor(Math.random() * names.length)];
+  const ts = new Date().toISOString().slice(11,19);
+  evidenceQueue.push({icon, label, name, ts});
+  updateEvidenceUI();
+}
+
+function updateEvidenceUI() {
+  const q = evidenceQueue;
+  const countEl = document.getElementById('evidence-count');
+  const queueEl = document.getElementById('evidence-queue');
+  const emptyEl = document.getElementById('queue-empty');
+  const itemsEl = document.getElementById('evidence-items');
+  if (!countEl) return;
+  countEl.textContent = q.length + (q.length === 1 ? ' item' : ' items');
+  if (q.length > 0) {
+    queueEl.style.display = 'block';
+    emptyEl.style.display = 'none';
+    itemsEl.innerHTML = q.map((e,i) => `
+      <div style="display:flex;align-items:center;gap:10px;background:#EEF7F7;border:1px solid #B8D8DA;border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <span style="font-size:18px">${e.icon}</span>
+        <div style="flex:1"><div style="font-size:13px;font-weight:500">${e.name}</div><div style="font-size:11px;color:var(--mu)">Added ${e.ts} · Encrypted ✓</div></div>
+        <button onclick="removeEvidence(${i})" style="background:none;border:none;color:var(--mu);cursor:pointer;font-size:20px;padding:4px;min-height:36px;min-width:36px" aria-label="Remove ${e.label}">×</button>
+      </div>
+    `).join('');
+  } else {
+    queueEl.style.display = 'none';
+    emptyEl.style.display = 'block';
+  }
+}
+
+function removeEvidence(idx) {
+  evidenceQueue.splice(idx, 1);
+  updateEvidenceUI();
+}
+
+function startRecordWith(icon, label) {
+  show('screen-vault-create');
+  setTimeout(() => addEvidence(icon, label), 150);
+}
+
+function goToKeyScreen() {
+  const desc = document.getElementById('incident-desc') ? document.getElementById('incident-desc').value : '';
+  const date = document.getElementById('incident-date') ? document.getElementById('incident-date').value : '';
+  const lines = [];
+  evidenceQueue.forEach(e => lines.push(e.icon + ' ' + e.label + ' — ' + e.name));
+  if (desc && desc.trim()) lines.push('📝 Written account');
+  if (date) lines.push('📅 Incident date: ' + date);
+  lines.push('📍 GPS coordinates & device ID');
+  lines.push('⏱️ RFC 3161 timestamp');
+  const listEl = document.getElementById('key-evidence-list');
+  if (listEl) listEl.innerHTML = (lines.length > 0
+    ? lines.map(l => '<div>✓ ' + l + '</div>').join('')
+    : '<div>✓ Written account and incident details</div>');
+  show('screen-vault-key');
+}
+
+function generateKey(){
+  const pin=document.getElementById('vault-pin').value;
+  if(!pin||pin.length<4){alert('Please enter a PIN of at least 4 digits.');return;}
+  const words=['amber','bridge','cedar','delta','eagle','frost','grove','haven','ivory','jewel','karma','lunar','maple','noble','ocean','pilot','quest','river','stone','tower'];
+  const code=Array.from({length:5},()=>words[Math.floor(Math.random()*words.length)]).join(' · ');
+  document.getElementById('recovery-code').textContent=code;
+  document.getElementById('recovery-box').style.display='block';
+  document.getElementById('gen-key-btn').style.display='none';
+}
+
+function finalSave(){
+  evidenceQueue = [];
+  document.getElementById('saved-timestamp').textContent=new Date().toISOString().slice(0,19)+'Z';
+  show('screen-saved');
+}
+
+// Witness management
+let witnessCount = 0;
+function addWitness() {
+  witnessCount++;
+  const id = witnessCount;
+  const div = document.createElement('div');
+  div.id = 'witness-' + id;
+  div.style.cssText = 'background:#FAFAF8;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600;color:var(--ink)">Witness ${id}</div>
+      <button onclick="removeWitness(${id})" style="background:none;border:none;color:var(--mu);cursor:pointer;font-size:20px;min-height:36px;min-width:36px;border-radius:6px;display:flex;align-items:center;justify-content:center" aria-label="Remove witness ${id}" onmouseover="this.style.color='var(--white)'" onmouseout="this.style.color='var(--mu)'">×</button>
+    </div>
+    <div class="field" style="margin-bottom:10px"><label>Full name</label><input type="text" placeholder="Witness name" aria-label="Witness ${id} name"></div>
+    <div class="field" style="margin-bottom:0"><label>Phone or email</label><input type="text" placeholder="Contact — stored encrypted" aria-label="Witness ${id} contact"></div>
+  `;
+  document.getElementById('witness-list').appendChild(div);
+  // Scroll new witness into view
+  div.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function removeWitness(id) {
+  const el = document.getElementById('witness-' + id);
+  if (el) el.remove();
+}
+
+// Quick exit
+function quickExit() {
+  window.location.replace('https://weather.com');
+}
+
+// Discreet mode — HGTV camouflage (survivor-validated per PROMiSE/UMiami research)
+let hgtvTapCount = 0;
+let hgtvTimer = null;
+function enableDiscreetMode() {
+  document.getElementById('disguise-overlay').classList.add('visible');
+  document.body.style.overflow = 'hidden';
+}
+function hgtvTaps() {
+  hgtvTapCount++;
+  clearTimeout(hgtvTimer);
+  hgtvTimer = setTimeout(() => { hgtvTapCount = 0; }, 700);
+  if (hgtvTapCount >= 3) {
+    hgtvTapCount = 0;
+    document.getElementById('disguise-overlay').classList.remove('visible');
+    document.body.style.overflow = '';
+  }
+}
+
+// Hope message
+function submitHope() {
+  const msg = document.getElementById('hope-message').value;
+  // In production this would submit anonymously; here we just navigate
+  show('screen-home');
+}
+
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+  show('screen-home');
+  var nav = document.getElementById('main-nav');
+  if(nav) nav.style.display='flex';
+});
+
+// Accessibility controls
+function setTextSize(size) {
+  document.body.classList.remove('text-lg','text-xl');
+  if (size === 'lg') document.body.classList.add('text-lg');
+  if (size === 'xl') document.body.classList.add('text-xl');
+  document.querySelectorAll('.tsz-btn').forEach(b => b.classList.remove('on'));
+  const sel = size === 'lg' ? '#tsz-lg' : size === 'xl' ? '#tsz-xl' : '#tsz-md';
+  document.querySelector(sel).classList.add('on');
+}
+function toggleContrast() {
+  document.body.classList.toggle('hi-contrast');
+  document.getElementById('hc-btn').classList.toggle('on');
+}
+function toggleMotion() {
+  document.body.classList.toggle('reduce-motion');
+  document.getElementById('rm-btn').classList.toggle('on');
+}
+
+
+// Keyboard accessibility for clickable rows
+document.addEventListener('DOMContentLoaded', function() {
+  // Make clickable rows keyboard accessible
+  document.querySelectorAll('[role="button"]').forEach(el => {
+    el.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        el.click();
+      }
+    });
+  });
+  
+  // Announce screen changes to screen readers
+  const announcer = document.createElement('div');
+  announcer.setAttribute('aria-live', 'assertive');
+  announcer.setAttribute('aria-atomic', 'true');
+  announcer.style.cssText = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;';
+  announcer.id = 'screen-announcer';
+  document.body.appendChild(announcer);
+});
+
+// Announce screen name when navigating
+const _origShow = show;
+function show(id) {
+  _origShow(id);
+  const screen = document.getElementById(id);
+  if (screen) {
+    const heading = screen.querySelector('h1, [class*="section-title"], [class*="slide-title"], [class*="sb-logo"]');
+    const announcer = document.getElementById('screen-announcer');
+    if (announcer && heading) {
+      announcer.textContent = '';
+      setTimeout(() => { announcer.textContent = heading.textContent + ' — screen loaded'; }, 50);
+    }
+  }
+}
+
+</script>
+</body>
+</html>
